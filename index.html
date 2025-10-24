@@ -111,6 +111,18 @@
     #ko.show {
         display: grid;
     }
+
+    @media screen and (max-width: 640px){
+        body {
+          .punchL {
+              transform: translate(10%, 5%) scale(5);
+          }
+      
+          .punchR {
+              transform: translate(-30%, 5%) scale(1.4);
+          }
+        }
+    }
     </style>
 
     </head>
@@ -246,4 +258,5 @@ reset();
 
 
     </body>
+
 </html>
