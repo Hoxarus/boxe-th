@@ -113,14 +113,25 @@
     }
 
     @media screen and (max-width: 640px){
-        body {
-          .punchL {
-              transform: translate(10%, 5%) scale(5);
-          }
-      
-          .punchR {
-              transform: translate(-30%, 5%) scale(1.4);
-          }
+        #game {
+            width: 140%;
+        }
+        .glove {
+            bottom: 0;
+            width: 50%;
+        }
+        .punchL {
+            transform: translate(10%, 5%) scale(1.4);
+        }
+    
+        .punchR {
+            transform: translate(-30%, 5%) scale(1.4);
+        }
+        #enemy {
+            left: 50%;
+            top: 75%;
+            transform: translate(-50%, -50%);
+            width: 60%;
         }
     }
     </style>
@@ -260,3 +271,4 @@ reset();
     </body>
 
 </html>
+
