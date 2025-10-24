@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Boxe 1ª Pessoa – Simples</title>
+    <style>
+    html,
+    body {
+        height: 100%;
+        margin: 0;
+        background: url('./assets/bg-1.png') center/cover no-repeat;
+        font-family: system-ui;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+
+    }
+
+    img {
+        max-width: 100%;
+        height: auto;
+        -webkit-user-drag: none;
+        user-select: none;
+    }
+
+    #game {
+        position: relative;
+        width: 60%;
+        height: 100dvh;
+        overflow: hidden;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    #enemy {
+        position: absolute;
+        left: 50%;
+        top: 60%;
+        transform: translate(-50%, -50%);
+        width: 50%;
+        pointer-events: none;
+    }
+
+    .glove {
+        position: absolute;
+        bottom: 0;
+        width: 45%;
+        pointer-events: none;
+        transition: transform 0.15s ease;
+    }
+
+    .left {
+        left: 4%;
+    }
+
+    .right {
+        right: 4%;
+    }
+
+    .punchL {
+        transform: translate(10%, 5%) scale(1.4);
+    }
+
+    .punchR {
+        transform: translate(-30%, 5%) scale(1.4);
+    }
+
+    .zone {
+        position: absolute;
+        inset: 0;
+    }
+
+    .zone.left {
+        right: 50%;
+    }
+
+    .zone.right {
+        left: 50%;
+    }
+
+    #hud {
+        position: absolute;
+        left: 50%;
+        top: 10px;
+        transform: translateX(-50%);
+        color: #fff;
+        background: #0008;
+        padding: 0.4rem 0.7rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: clamp(12px, 2vmin, 18px);
+    }
+
+    #ko {
+        position: absolute;
+        height: 40%;
+        margin-top: 10%;
+        inset: 0;
+        display: none;
+        place-items: center;
+        color: #fff;
+        background: #0009;
+        font-size: clamp(22px, 5vmin, 40px);
+        font-weight: 800;
+        text-align: center;
+        padding: 0 1rem;
+    }
+
+    #ko.show {
+        display: grid;
+    }
+    </style>
+
+    </head>
+    <body>
+    <div id="game">
+        <div id="hud">Golpes: <span id="hits">0</span> — Teclas: A/D — R: reset</div>
+        <img id="enemy" alt="Inimigo" />
+        <img id="gloveL" class="glove left" alt="Luva esquerda" />
+        <img id="gloveR" class="glove right" alt="Luva direita" />
+        <div class="zone left"  id="zoneL" aria-label="esquerda"></div>
+        <div class="zone right" id="zoneR" aria-label="direita"></div>
+        <div id="ko">💥 N O C A U T E 💥<br><small>Pressione R para recomeçar</small></div>
+    </div>
+    <audio id="sndPunch"></audio>
+    <audio id="sndKO"></audio>
+
+<script>
+const CONFIG = {
+  hitsToKO: 10,
+  hitFlashTime: 180, // tempo em ms que o inimigo mostra a sprite de impacto
+  assets: {
+    ringBg: 'assets/ring.jpg',
+    gloveLeft: 'assets/punho-left-1.png',
+    gloveRight: 'assets/punho-right-1.png',
+    punchLeft: 'assets/punho-left-2.png',
+    punchRight: 'assets/punho-right-2.png',
+    enemy: [
+      'assets/inimigo-parado.png',          // 0
+      'assets/inimigo-tomando-soco.png',    // 1 (impacto)
+      'assets/inimigo-machucado-1.png',     // 2
+      'assets/inimigo-machucado-2.png',     // 3
+      'assets/inimigo-machucado-3.png',     // 4
+      'assets/inimigo-derrotado.png'     // 5 (KO)
+    ],
+    sounds: {
+      punch: 'assets/punch.mp3',
+      ko: 'assets/ko.mp3'
+    }
+  }
+};
+
+const game = document.getElementById('game');
+const enemy = document.getElementById('enemy');
+const gloveL = document.getElementById('gloveL');
+const gloveR = document.getElementById('gloveR');
+const zoneL = document.getElementById('zoneL');
+const zoneR = document.getElementById('zoneR');
+const hitsEl = document.getElementById('hits');
+const koUI = document.getElementById('ko');
+const sndPunch = document.getElementById('sndPunch');
+const sndKO = document.getElementById('sndKO');
+
+let hits = 0;
+
+function setupAssets() {
+  game.style.backgroundImage = `url(${CONFIG.assets.ringBg})`;
+  gloveL.src = CONFIG.assets.gloveLeft;
+  gloveR.src = CONFIG.assets.gloveRight;
+  sndPunch.src = CONFIG.assets.sounds.punch;
+  sndKO.src = CONFIG.assets.sounds.ko;
+  updateEnemySprite();
+}
+
+function getEnemyStage() {
+  const ratio = hits / CONFIG.hitsToKO;
+  if (ratio >= 1) return 5;  // KO
+  if (ratio >= 0.8) return 4;
+  if (ratio >= 0.5) return 3;
+  if (ratio >= 0.2) return 2;
+  return 0; // parado
+}
+
+function updateEnemySprite() {
+  const idx = getEnemyStage();
+  enemy.src = CONFIG.assets.enemy[idx];
+}
+
+function reset() {
+  hits = 0;
+  hitsEl.textContent = hits;
+  koUI.classList.remove('show');
+  updateEnemySprite();
+  gloveL.src = CONFIG.assets.gloveLeft;
+  gloveR.src = CONFIG.assets.gloveRight;
+}
+
+function punch(side) {
+  if (hits >= CONFIG.hitsToKO) return;
+
+  const glove = side === 'L' ? gloveL : gloveR;
+  const normal = side === 'L' ? CONFIG.assets.gloveLeft : CONFIG.assets.gloveRight;
+  const punchImg = side === 'L' ? CONFIG.assets.punchLeft : CONFIG.assets.punchRight;
+
+  // anima luva
+  glove.src = punchImg;
+  glove.classList.add(side === 'L' ? 'punchL' : 'punchR');
+  try { sndPunch.currentTime = 0; sndPunch.play(); } catch(e) {}
+
+  // troca a sprite do inimigo para “tomando soco”
+  enemy.src = CONFIG.assets.enemy[1];
+
+  // depois de um tempo, volta pro estágio de dano atual
+  setTimeout(() => {
+    glove.classList.remove(side === 'L' ? 'punchL' : 'punchR');
+    glove.src = normal;
+    updateEnemySprite();
+  }, CONFIG.hitFlashTime);
+
+  // contabiliza o golpe
+  hits++;
+  hitsEl.textContent = hits;
+
+  if (hits >= CONFIG.hitsToKO) {
+    setTimeout(() => {
+      enemy.src = CONFIG.assets.enemy[5]; // KO
+      koUI.classList.add('show');
+      try { sndKO.play(); } catch(e) {}
+    }, CONFIG.hitFlashTime);
+  }
+}
+
+zoneL.addEventListener('pointerdown', () => punch('L'));
+zoneR.addEventListener('pointerdown', () => punch('R'));
+window.addEventListener('keydown', e => {
+  if (e.key === 'a' || e.key === 'A') punch('L');
+  if (e.key === 'd' || e.key === 'D') punch('R');
+  if (e.key === 'r' || e.key === 'R') reset();
+});
+
+setupAssets();
+reset();
+</script>
+
+
+    </body>
+</html>
